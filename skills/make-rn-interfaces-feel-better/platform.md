@@ -2,6 +2,8 @@
 
 The detail category the web simply doesn't have: **one codebase rendering on two native platforms.** Most "it looked right on my simulator, wrong on the other phone" bugs live here. These are the cross-platform mechanics; the design _principles_ that use them live in [surfaces.md](surfaces.md) and [animations.md](animations.md).
 
+> **First: confirm Android actually ships.** This whole doc is moot for an iOS-only app. Check for a real `android/` directory and an Android build profile (e.g. in `eas.json`) — **not** the `android` block in `app.json` / `app.config`, which Expo writes regardless. iOS-only? Skip everything here, and don't flag iOS shadows for "missing `elevation`."
+
 ## iOS Shadow vs Android Elevation
 
 iOS and Android draw depth through **two unrelated systems**. A style that sets only one is half-done.
@@ -38,6 +40,7 @@ Practical notes:
 - There is **no exact mapping** between `shadowRadius`/`shadowOffset` and `elevation`. Tune `elevation` separately by eye on an Android device — a value that looks right on iOS won't translate numerically.
 - `elevation` also affects **draw order / z-stacking** on Android (higher = drawn on top), occasionally with surprising results in overlapping layouts. If an Android shadow won't appear, check that the view has a non-transparent `backgroundColor` and isn't clipped by an ancestor's `overflow: 'hidden'`.
 - Silhouette shadows (transparent background → shadow follows the alpha) are **iOS-only**; on Android the same view falls back to a rect shadow or none. Don't rely on a cut-out shape casting a shaped shadow cross-platform.
+- **`elevation` can't do direction.** It's symmetric and system-defined, so an **offset or upward** iOS shadow (e.g. `shadowOffset: { height: -8 }` for a drawer lip) has **no** Android equivalent — "set both" can't reach parity there. Match the *intent* (depth), accept the *look* will differ, and never put `elevation` on a transparent silhouette shadow (it boxes or vanishes).
 
 ## Pressable Feedback Idioms
 

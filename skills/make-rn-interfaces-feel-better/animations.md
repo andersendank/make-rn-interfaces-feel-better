@@ -4,6 +4,8 @@ Interruptible motion, enter/exit transitions, contextual icon animations, press 
 
 > **Dependency note.** Check the project's `package.json`. If `react-native-reanimated` is present, use it (every example below). If not, the built-in `Animated` API plus `Pressable`'s `style`/state callbacks cover most of this — the patterns translate, the ergonomics are just clunkier. Don't add Reanimated solely for a single press effect; do reach for it for anything interruptible or gesture-driven.
 
+> **Verifying these.** Motion is **device/interaction-verified**, not screenshot-verifiable — a static capture can't show a play↔pause swap, a stagger, or a press scale. Confirm these by interacting on a device or by reading the code, not from a screenshot.
+
 ## Interruptible Animations
 
 Users change intent mid-interaction. If an animation can't be interrupted, the interface feels broken — a half-open drawer that snaps shut, a toggle that ignores a fast double-tap.
@@ -37,6 +39,8 @@ function Drawer({ open }: { open: boolean }) {
 ```
 
 `cancelAnimation(x)` stops an in-flight animation where it is (e.g. when a gesture takes over). **Rule:** retargeting animations for interactive state; one-shot sequences only for staged motion that runs once.
+
+> **Interruptible without "retargeting".** A scroll- or gesture-driven value — core RN `Animated.event(…, { useNativeDriver: true })` feeding `interpolate`, or a Reanimated value tied to scroll offset — is also interruptible *and* runs off the JS thread, even though it never "retargets" toward a target. A carousel whose page indicator interpolates from scroll position is the canonical case. "Interruptible" isn't only the `withTiming`-retarget pattern.
 
 ## Enter Animations: Split and Stagger
 

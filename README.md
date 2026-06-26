@@ -42,6 +42,8 @@ The original is written for the web (CSS, Tailwind, Framer Motion). This port te
 
 Any React Native developer — Expo or bare workflow. The surface, typography, and platform principles are dependency-free (`StyleSheet` + `Pressable`). The animation chapters assume [`react-native-reanimated`](https://docs.swmansion.com/react-native-reanimated/) (recommended, not required — a built-in `Animated` fallback is noted). The Skia/SVG threading notes only matter if you use [`@shopify/react-native-skia`](https://shopify.github.io/react-native-skia/) or [`react-native-svg`](https://github.com/software-mansion/react-native-svg).
 
+**Context first.** These principles aren't context-free — `SKILL.md` opens with a short preflight: confirm your platform targets and read the design-system tokens. Much of `platform.md` is moot on an **iOS-only** app, and a **radius-token scale** or a **monospace** number font changes how several principles apply. The skill is written to respect the system that already exists rather than impose cross-platform, token-less defaults.
+
 ## Compatibility
 
 - React Native **0.74+** (examples assume the New Architecture, default since RN 0.76 / Expo SDK 52).

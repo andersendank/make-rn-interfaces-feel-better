@@ -9,6 +9,15 @@ Great interfaces rarely come from a single thing. They're a collection of small 
 
 React Native adds two wrinkles the web doesn't have: you are styling **two native renderers at once**, so several of these details are about making iOS and Android agree — and your animations can run on the **UI thread or the JS thread**, so a few are about keeping motion off the bridge. This skill is the [web original](https://github.com/jakubkrehel/make-interfaces-feel-better) translated honestly into RN: what maps, what changes, and what simply has no equivalent.
 
+## Before you apply these: read the project first
+
+These principles aren't context-free, and run blindly the checklist cries wolf. Two checks up front prevent most false positives:
+
+1. **Platform targets — is Android actually shipped?** Look for a real `android/` directory and an Android build profile (e.g. in `eas.json`) — **not** the `android` block in `app.json` / `app.config`, which Expo writes whether or not you ship Android. If the app is **iOS-only**, skip the Android half of these rules: [platform.md](platform.md)'s `elevation` / ripple guidance is moot, and you should *not* flag an iOS-only shadow for "missing `elevation`."
+2. **Design system — read the tokens.** Find the radius / color / spacing / shadow / font tokens before flagging anything. A radius **scale** changes how concentric radius applies (#1); a **monospace** number font makes tabular figures a no-op (#18); a warm or branded neutral changes the default outline color (#6); skeuomorphic surfaces use 1px bevel edges that look like dividers but aren't (#5).
+
+When a principle below assumes cross-platform or token-less defaults, these two facts override it.
+
 ## Quick Reference
 
 | Category | When to Use |
@@ -23,27 +32,27 @@ React Native adds two wrinkles the web doesn't have: you are styling **two nativ
 
 ### 1. Concentric Border Radius
 
-Outer radius = inner radius + padding. Compute it literally in `StyleSheet` — RN has no `rounded-xl` token to lean on. Mismatched radii on nested elements is the most common thing that makes an interface feel off.
+Outer radius = inner radius + padding, computed in `StyleSheet`. If the project has a **radius token scale** (e.g. `{ card: 6, control: 8 }`), reconcile the two: concentric math wins for **tightly-nested** elements (a control inside a track, a cell inside a ladder); the **token scale governs independent surfaces**. Mismatched radii on nested elements is the most common thing that makes an interface feel off.
 
 ### 2. Optical Over Geometric Alignment
 
 When geometric centering looks off, align optically. A play triangle needs a small `marginLeft`; an icon next to text wants slightly less padding on the icon side. Fix the SVG/asset directly when you can, manual margin when you can't.
 
-### 3. Shadows Over Borders — and Always Set `elevation`
+### 3. Shadows Over Borders — Set `elevation` if Android Ships
 
-Prefer a subtle shadow to a border for depth on cards and buttons. But an iOS-only `shadow*` style renders **flat on Android** — Android depth comes from `elevation`. Set both, every time. Keep real dividers as borders (see #5).
+Prefer a subtle shadow to a border for depth on cards and buttons. **If Android is a shipped target** (see the preflight), an iOS-only `shadow*` style renders flat there — Android depth comes from `elevation`, so set both. Two cases where `elevation` is *wrong*, not just missing: a **silhouette shadow** (transparent background, #4) — `elevation` traces a box or renders nothing; and an **offset/directional shadow** (e.g. an upward shadow) — `elevation` is symmetric and can't reproduce it. Keep real dividers as borders (see #5).
 
 ### 4. Silhouette Shadows
 
 Give a card `backgroundColor: 'transparent'` and the iOS shadow follows the content's **alpha silhouette** instead of a box outline — the trick for making an irregular shape (artwork, an icon, a cut-out) cast a true shadow. Reserve `elevation` for things that should genuinely read as lifted.
 
-### 5. Crisp Hairline Dividers
+### 5. Crisp Hairline Dividers — but Know What's a Divider
 
-`borderBottomWidth: StyleSheet.hairlineWidth`, never `1`. `hairlineWidth` is one **physical** pixel on the device — the density-aware way to get the thin separators the web draws with `1px`. Dividers stay borders; don't shadow them.
+For real **separators**, use `borderBottomWidth: StyleSheet.hairlineWidth`, never `1` — `hairlineWidth` is one **physical** pixel, the density-aware way to draw the thin lines the web does with `1px`. But a 1px **bevel / inset / depth edge** (a skeuomorphic light-or-shadow border that fakes a raised or recessed surface) is **not** a divider — hairlining it flattens the effect. Separators → `hairlineWidth`; depth edges → leave them at `1`. Dividers stay borders; don't shadow them.
 
 ### 6. Image Outlines
 
-Add a `1px` neutral outline to images for consistent depth: `borderWidth: 1` at `rgba(0,0,0,0.1)` (light) or `rgba(255,255,255,0.1)` (dark). Pure black/white only — never a tinted near-black, which reads as dirt on the edge. Budget for the layout `borderWidth` adds (RN has no `outline-offset`); use an absolute overlay if the image can't grow.
+Add a `1px` neutral outline to **rectangular** images for consistent depth. The non-negotiable part is the **hue**: never a **saturated or palette-derived** tint (slate, zinc, your accent), which reads as dirt on the edge. `rgba(0,0,0,0.1)` / `rgba(255,255,255,0.1)` is the safe default — but on a warm/branded surface a **desaturated neutral matched to the surface temperature**, at a fitting alpha, is more cohesive than a literal cold black. Don't outline **irregular / cut-out alpha art** — a border boxes it; let its silhouette shadow (#4) carry the depth. Budget for the layout `borderWidth` adds (RN has no `outline-offset`); use an absolute overlay if the image can't grow.
 
 ### 7. Minimum Hit Area via `hitSlop`
 
@@ -91,7 +100,7 @@ Where a frame is computed decides whether it's smooth. A `View` transform via Re
 
 ### 18. Tabular Numbers
 
-Any number that updates in place — timers, counters, prices, scoreboards — gets `fontVariant: ['tabular-nums']` so digits are equal width and the layout doesn't jitter. Verify your font supports it (system SF does; check custom fonts).
+Any number that updates in place — timers, counters, prices, scoreboards — gets `fontVariant: ['tabular-nums']` so digits are equal width and the layout doesn't jitter. **If the number is set in a monospace font, every glyph is already equal-width — this is a no-op; skip it (and don't flag its absence).** For proportional fonts, verify the font supports tabular figures (system SF does; check custom fonts).
 
 ### 19. Load Fonts Deliberately
 
@@ -107,16 +116,16 @@ RN has **no** `text-wrap: balance` / `pretty`. There's no clean way to balance l
 | --- | --- |
 | Same `borderRadius` on parent and child | Compute `outer = inner + padding` literally |
 | Icons look off-center | Nudge optically (`marginLeft`) or fix the SVG/asset |
-| `shadow*` props but no Android `elevation` | Set `elevation` alongside; test on Android |
+| `shadow*` with no Android `elevation` (and Android ships) | Set `elevation` too — but never on a silhouette/directional shadow; iOS-only app? ignore |
 | Shadow on an opaque box, expecting a silhouette | `backgroundColor: 'transparent'` so the shadow follows the alpha |
-| `borderBottomWidth: 1` divider looks chunky | `StyleSheet.hairlineWidth` |
-| Tinted image outline (slate/zinc/`#111`) | Pure `rgba(0,0,0,0.1)` / `rgba(255,255,255,0.1)` |
+| `borderBottomWidth: 1` on a real divider looks chunky | `StyleSheet.hairlineWidth` (but leave bevel/inset depth edges at `1`) |
+| **Saturated** image outline (slate/zinc/accent) | Neutral hue; `rgba(0,0,0,0.1)` / `rgba(255,255,255,0.1)` default, surface-fit alpha on branded UIs |
 | Tiny touch targets | `hitSlop` to 44×44 / 48dp (doesn't change layout) |
 | Content under the notch / home indicator | `useSafeAreaInsets()` / `SafeAreaView` `edges` |
 | Keyframe/one-shot for an interactive toggle | `withTiming` retarget + `cancelAnimation` (interruptible) |
 | One container fades in as a block | Split into chunks, stagger ~60–100ms |
 | Dramatic exit that steals focus | Small fixed `translateY`, shorter than the enter |
-| Numbers jitter as they update | `fontVariant: ['tabular-nums']` (font must support it) |
+| Numbers jitter as they update | `fontVariant: ['tabular-nums']` (no-op on a mono font; verify other fonts) |
 | Expecting `text-wrap: balance` / `pretty` | No equivalent — `numberOfLines` / `adjustsFontSizeToFit` |
 | Porting `-webkit-font-smoothing` | N/A on RN — drop it; load fonts via `expo-font` |
 | Animating `width` / `height` / `flex` for motion | Animate `transform` / `opacity` on the UI thread |
@@ -126,7 +135,7 @@ RN has **no** `text-wrap: balance` / `pretty`. There's no clean way to balance l
 
 ## Review Output Format
 
-Present changes as markdown tables with **Before** and **After** columns. Include every change you made — not just a subset. Never list findings as loose "Before:" / "After:" lines outside a table. Group changes by principle under a heading, and keep each row to a single diff so the reader can scan the whole list. Cite the specific file and the specific prop that changed when it isn't obvious from the snippet. If a principle was reviewed but nothing needed to change, omit that table — empty tables add noise.
+Present changes as markdown tables with **Before** and **After** columns. Include every change you made — not just a subset. Never list findings as loose "Before:" / "After:" lines outside a table. Group changes by principle under a heading, and keep each row to a single diff so the reader can scan the whole list. Cite the specific file and the specific prop that changed when it isn't obvious from the snippet. If a principle was reviewed but nothing needed to change, don't make an empty before/after table — instead list it under a short **"Reviewed, already correct"** line at the end, so the report shows coverage (what you checked), not just diffs.
 
 ### Example
 
@@ -155,15 +164,17 @@ Present changes as markdown tables with **Before** and **After** columns. Includ
 
 ## Review Checklist
 
-- [ ] Nested rounded elements use concentric radius (`outer = inner + padding`)
+> Run the **preflight first** (confirm platform targets, read the design tokens) — several items below are conditional on those.
+
+- [ ] Nested rounded elements use concentric radius (`outer = inner + padding`), reconciled with any radius-token scale
 - [ ] Icons are optically centered, not just geometrically
-- [ ] Every `shadow*` style also sets Android `elevation`
+- [ ] If Android ships, every `shadow*` style also sets `elevation` — but not on silhouette/directional shadows
 - [ ] Silhouette shadows use a transparent background
-- [ ] Dividers use `StyleSheet.hairlineWidth`, not `1`
-- [ ] Image outlines are neutral `rgba(0,0,0,0.1)` / `rgba(255,255,255,0.1)`
+- [ ] Real dividers use `StyleSheet.hairlineWidth`, not `1` — bevel/inset depth edges are left alone
+- [ ] Image outlines are a neutral hue (not a saturated/palette tint); alpha fits the surface
 - [ ] Interactive elements reach 44×44 / 48dp via `hitSlop`
 - [ ] Screens respect safe-area insets (no hardcoded notch padding)
-- [ ] Interactive animations retarget (`withTiming`), not keyframes
+- [ ] Interactive animations are interruptible — Reanimated retarget (`withTiming`) or `Animated` + `useNativeDriver` scroll/gesture interpolation; not one-shot keyframes
 - [ ] Enter animations are split and staggered
 - [ ] Exit animations are subtle (small fixed translate, shorter than enter)
 - [ ] Icon swaps animate scale + opacity (blur omitted on RN)
@@ -172,7 +183,9 @@ Present changes as markdown tables with **Before** and **After** columns. Includ
 - [ ] `entering` is gated so default-state elements don't animate on launch
 - [ ] Motion animates `transform` / `opacity`, never layout props
 - [ ] `react-native-svg` is driven via rAF, not Reanimated props
-- [ ] Updating numbers use `fontVariant: ['tabular-nums']`
+- [ ] Updating numbers use `fontVariant: ['tabular-nums']` (skip on mono fonts)
+
+> **Verifiability.** The surface items (radius, shadows, hairlines, outlines, hit area, safe-area) are screenshot-checkable — though hairline and ~2px radius deltas are sub-pixel at typical screenshot-harness resolution, so confirm those at full device resolution. The motion items (interruptible, enter/exit, icon swaps, press feedback, springs, `entering`) are **device/interaction-verified**, not screenshot-verifiable — confirm by interacting or reading the code.
 
 ## Reference Files
 

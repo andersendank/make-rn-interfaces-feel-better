@@ -10,7 +10,7 @@ When nesting rounded elements, the outer radius must equal the inner radius plus
 outerRadius = innerRadius + padding
 ```
 
-RN has no radius tokens (`rounded-xl`) to lean on, so you always compute this by hand. If the padding is larger than ~24px, treat the layers as separate surfaces and choose each radius independently instead of forcing strict concentric math.
+If the project has no radius tokens you compute this by hand. If it **does** have a radius scale (e.g. `{ card: 6, control: 8 }`), reconcile the two: **concentric math wins for tightly-nested elements** (a control inside a track, a cell inside a ladder — there, `outer = inner + padding` beats "both happen to be on-scale"), while the **token scale governs independent surfaces**. And if the padding is larger than ~24px, treat the layers as separate surfaces and pick each radius independently rather than forcing strict concentric math.
 
 ```tsx
 // Good — concentric radii
@@ -178,16 +178,17 @@ row: { borderBottomWidth: 1, borderBottomColor: '#333' }
 
 Keep dividers as **borders**, not shadows — a divider's job is separation, not depth. Match the color to a low-opacity neutral so it disappears into the surface.
 
+**Not every 1px border is a divider.** A skeuomorphic **bevel / inset edge** — a lighter border on top and a darker one on the bottom (or vice-versa) that fakes a raised or recessed surface — is a *depth cue*, not a separator. Hairlining those flattens the effect; leave them at `1`. Ask "is this line separating two things, or shaping one thing?" Separators get `hairlineWidth`; depth edges stay.
+
 ## Image Outlines
 
 Add a subtle `1px` outline to images for consistent depth, especially in a system where other elements use shadows or borders.
 
-### Color rules (non-negotiable)
+### Color rules
 
-- **Light mode:** pure black — `rgba(0, 0, 0, 0.1)`.
-- **Dark mode:** pure white — `rgba(255, 255, 255, 0.1)`.
-- Never a near-black/near-white from your palette (slate-900, zinc-900, `#111827`, `#f5f5f7`). A tinted outline picks up the surface color and reads as dirt on the image edge.
-- Never the accent or ink color. The outline is a neutral separator, not a themed element.
+- **The non-negotiable part — hue.** Never a **saturated or palette-derived** tint (slate-900, zinc-900, `#111827`, `#f5f5f7`, your accent or ink color). A saturated/themed outline picks up the surface color and reads as dirt on the image edge. The outline is a neutral separator, not a themed element.
+- **The flexible part — exact color & alpha.** `rgba(0, 0, 0, 0.1)` (light) / `rgba(255, 255, 255, 0.1)` (dark) is the safe default. But on a strongly **warm or branded** surface, a **desaturated neutral matched to the surface temperature**, at an alpha that suits the element's size and contrast, is more cohesive than a literal cold black — pure-black-`0.1` can read *colder*, not cleaner, there. Stay neutral; let the surface set the temperature and the alpha.
+- **Only outline rectangular images.** Don't outline **irregular / cut-out alpha art** — a border boxes the transparent bounds instead of tracing the shape. Let its silhouette shadow (see [Shadows](#shadows-instead-of-borders)) carry the depth instead.
 
 ### The RN catch: no `outline`
 

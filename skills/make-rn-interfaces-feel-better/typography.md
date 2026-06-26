@@ -38,6 +38,7 @@ function mmss(ms: number) {
 
 ### Caveats
 
+- **Monospace fonts make this a no-op.** If your numbers are already in a monospace font, every glyph is the same width by definition — `fontVariant: ['tabular-nums']` does nothing. Don't add it, and don't flag its absence. The rule is for **proportional** fonts.
 - **Font support varies.** The system font (San Francisco on iOS, Roboto on Android) supports tabular figures. A custom font may not — verify before relying on it, or the prop silently does nothing.
 - **`fontVariant` is an array** and accepts more than tabular figures (`'oldstyle-nums'`, `'lining-nums'`, `'small-caps'`, etc.), but support is font-dependent.
 - Some fonts visibly change the `1` glyph (wider/centered) under tabular figures. That's expected and usually desirable for alignment — just confirm it looks right.
