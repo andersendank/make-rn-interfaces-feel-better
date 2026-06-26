@@ -124,18 +124,24 @@ The robust pattern keeps **both** icons mounted (one absolutely positioned over 
 ```tsx
 import Animated, { useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
+// Call useAnimatedStyle once per icon at the top level — never inside a helper
+// or loop (that would break the rules of hooks).
 function IconSwap({ active }: { active: boolean }) {
-  const enter = (show: boolean) =>
-    useAnimatedStyle(() => ({
-      opacity: withTiming(show ? 1 : 0, { duration: 200 }),
-      transform: [{ scale: withTiming(show ? 1 : 0.25, {
-        duration: 200, easing: Easing.out(Easing.cubic) }) }],
-    }));
+  const pauseStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(active ? 1 : 0, { duration: 200 }),
+    transform: [{ scale: withTiming(active ? 1 : 0.25, {
+      duration: 200, easing: Easing.out(Easing.cubic) }) }],
+  }));
+  const playStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(active ? 0 : 1, { duration: 200 }),
+    transform: [{ scale: withTiming(active ? 0.25 : 1, {
+      duration: 200, easing: Easing.out(Easing.cubic) }) }],
+  }));
 
   return (
     <View>
-      <Animated.View style={[StyleSheet.absoluteFill, enter(active)]}><PauseIcon /></Animated.View>
-      <Animated.View style={enter(!active)}><PlayIcon /></Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, pauseStyle]}><PauseIcon /></Animated.View>
+      <Animated.View style={playStyle}><PlayIcon /></Animated.View>
     </View>
   );
 }
